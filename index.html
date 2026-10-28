@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Vocab</title>
+<style>
+  :root {
+    --bg: #FAFAF7;
+    --surface: #FFFFFF;
+    --fg: #1a1a1a;
+    --fg2: #6b6b6b;
+    --accent: #2563EB;
+    --accent-light: #EFF4FF;
+    --border: #e5e5e0;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161616;
+      --surface: #1e1e1e;
+      --fg: #e8e8e4;
+      --fg2: #9a9a9a;
+      --accent: #60a5fa;
+      --accent-light: #1e2a3a;
+      --border: #2a2a2a;
+      --danger: #f87171;
+      --danger-light: #2a1a1a;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, 'Helvetica Neue', sans-serif;
+    padding: 0 16px;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  h1 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.6rem; text-align: center; }
+
+  .add-area {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg); padding: 0.5rem 0 0.4rem;
+  }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 6px; }
+
+  .add-row input {
+    flex: 1; min-width: 0; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--surface); color: var(--fg);
+    font-family: inherit; font-size: 0.95rem; outline: none;
+  }
+  .add-row input:focus { border-color: var(--accent); }
+  .add-row input::placeholder { color: var(--fg2); }
+
+  .btn {
+    padding: 10px 16px; border: none; border-radius: 10px;
+    background: var(--accent); color: #fff;
+    font-family: inherit; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+  .btn:active { opacity: 0.85; }
+  .btn:disabled { opacity: 0.5; }
+
+  .tabs {
+    display: flex; margin-bottom: 0.5rem;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 8px 0;
+    font-size: 0.85rem; font-weight: 500; color: var(--fg2);
+    cursor: pointer; border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1.5px; background: none; font-family: inherit;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .status { text-align: center; font-size: 0.82rem; padding: 0.3rem 0; }
+  .status.loading { color: var(--fg2); }
+  .status.error { color: var(--danger); }
+
+  .count { text-align: center; font-size: 0.8rem; color: var(--fg2); margin: 0.3rem 0 0.6rem; }
+
+  .word-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 2rem; }
+
+  .word-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; position: relative;
+  }
+
+  .word-header {
+    display: flex; align-items: baseline; gap: 8px;
+    margin-bottom: 6px; padding-right: 30px; flex-wrap: wrap;
+  }
+  .word-name { font-size: 1.15rem; font-weight: 700; line-height: 1.3; }
+  .word-phonetic { font-size: 0.82rem; color: var(--fg2); }
+  .sound-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 2px 4px; font-size: 0.85rem; color: var(--accent);
+  }
+
+  .word-pos {
+    display: inline-block; font-size: 0.72rem; font-weight: 600;
+    color: var(--accent); background: var(--accent-light);
+    padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-bottom: 4px;
+  }
+
+  .word-def { font-size: 0.88rem; color: var(--fg); line-height: 1.55; margin-top: 2px; }
+
+  .word-actions { position: absolute; top: 12px; right: 12px; }
+  .word-actions button {
+    background: none; border: none; cursor: pointer;
+    padding: 4px 6px; font-size: 1rem; line-height: 1;
+    color: var(--fg2); border-radius: 6px;
+  }
+  .word-actions button:active { background: var(--danger-light); color: var(--danger); }
+
+  .empty { text-align: center; color: var(--fg2); font-size: 0.9rem; margin-top: 3rem; line-height: 1.6; }
+
+  .manual-area { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .manual-area .row { display: flex; gap: 6px; }
+  .manual-area input {
+    flex: 1; min-width: 0; padding: 8px 10px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    background: var(--surface); color: var(--fg);
+    font-family: inherit; font-size: 0.85rem; outline: none;
+  }
+  .manual-area input:focus { border-color: var(--accent); }
+  .manual-area button {
+    padding: 8px 12px; border: none; border-radius: 8px;
+    background: var(--accent); color: #fff;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+
+  .date-label { font-size: 0.72rem; color: var(--fg2); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>My Vocab</h1>
+
+<div class="add-area">
+  <div class="add-row">
+    <input type="text" id="wordInput" placeholder="输入单词，自动查询" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <button class="btn" id="addBtn">查询</button>
+  </div>
+</div>
+
+<div id="statusArea"></div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="all">全部</button>
+  <button class="tab" data-tab="recent">最近7天</button>
+  <button class="tab" data-tab="search">搜索</button>
+</div>
+
+<div id="searchBox" style="display:none;margin-bottom:0.5rem">
+  <div class="add-row">
+    <input type="text" id="searchInput" placeholder="搜索单词...">
+  </div>
+</div>
+
+<div class="count" id="count"></div>
+<div class="word-list" id="list"></div>
+
+<script>
+(function() {
+  var KEY = 'my_vocab_v2';
+  var words = [];
+  var currentTab = 'all';
+  var searchFilter = '';
+
+  function load() {
+    try { var d = localStorage.getItem(KEY); if (d) words = JSON.parse(d); } catch(e) {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(words)); } catch(e) {}
+  }
+
+  function showStatus(msg, type) {
+    document.getElementById('statusArea').innerHTML = '<div class="status ' + type + '">' + msg + '</div>';
+  }
+  function clearStatus() { document.getElementById('statusArea').innerHTML = ''; }
+
+  function esc(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // ===== MD5 implementation for Baidu API =====
+  function md5(string) {
+    function md5cycle(x, k) {
+      var a = x[0], b = x[1], c = x[2], d = x[3];
+      a = ff(a,b,c,d,k[0],7,-680876936);d = ff(d,a,b,c,k[1],12,-389564586);c = ff(c,d,a,b,k[2],17,606105819);b = ff(b,c,d,a,k[3],22,-1044525330);
+      a = ff(a,b,c,d,k[4],7,-176418897);d = ff(d,a,b,c,k[5],12,1200080426);c = ff(c,d,a,b,k[6],17,-1473231341);b = ff(b,c,d,a,k[7],22,-45705983);
+      a = ff(a,b,c,d,k[8],7,1770035416);d = ff(d,a,b,c,k[9],12,-1958414417);c = ff(c,d,a,b,k[10],17,-42063);b = ff(b,c,d,a,k[11],22,-1990404162);
+      a = ff(a,b,c,d,k[12],7,1804603682);d = ff(d,a,b,c,k[13],12,-40341101);c = ff(c,d,a,b,k[14],17,-1502002290);b = ff(b,c,d,a,k[15],22,1236535329);
+      a = gg(a,b,c,d,k[1],5,-165796510);d = gg(d,a,b,c,k[6],9,-1069501632);c = gg(c,d,a,b,k[11],14,643717713);b = gg(b,c,d,a,k[0],20,-373897302);
+      a = gg(a,b,c,d,k[5],5,-701558691);d = gg(d,a,b,c,k[10],9,38016083);c = gg(c,d,a,b,k[15],14,-660478335);b = gg(b,c,d,a,k[4],20,-405537848);
+      a = gg(a,b,c,d,k[9],5,568446438);d = gg(d,a,b,c,k[14],9,-1019803690);c = gg(c,d,a,b,k[3],14,-187363961);b = gg(b,c,d,a,k[8],20,1163531501);
+      a = gg(a,b,c,d,k[13],5,-1444681467);d = gg(d,a,b,c,k[2],9,-51403784);c = gg(c,d,a,b,k[7],14,1735328473);b = gg(b,c,d,a,k[12],20,-1926607734);
+      a = hh(a,b,c,d,k[5],4,-378558);d = hh(d,a,b,c,k[8],11,-2022574463);c = hh(c,d,a,b,k[11],16,1839030562);b = hh(b,c,d,a,k[14],23,-35309556);
+      a = hh(a,b,c,d,k[1],4,-1530992060);d = hh(d,a,b,c,k[4],11,1272893353);c = hh(c,d,a,b,k[7],16,-155497632);b = hh(b,c,d,a,k[10],23,-1094730640);
+      a = hh(a,b,c,d,k[13],4,681279174);d = hh(d,a,b,c,k[0],11,-358537222);c = hh(c,d,a,b,k[3],16,-722521979);b = hh(b,c,d,a,k[6],23,76029189);
+      a = hh(a,b,c,d,k[9],4,-640364487);d = hh(d,a,b,c,k[12],11,-421815835);c = hh(c,d,a,b,k[15],16,530742520);b = hh(b,c,d,a,k[2],23,-995338651);
+      a = ii(a,b,c,d,k[0],6,-198630844);d = ii(d,a,b,c,k[7],10,1126891415);c = ii(c,d,a,b,k[14],15,-1416354905);b = ii(b,c,d,a,k[5],21,-57434055);
+      a = ii(a,b,c,d,k[12],6,1700485571);d = ii(d,a,b,c,k[3],10,-1894986606);c = ii(c,d,a,b,k[10],15,-1051523);b = ii(b,c,d,a,k[1],21,-2054922799);
+      a = ii(a,b,c,d,k[8],6,1873313359);d = ii(d,a,b,c,k[15],10,-30611744);c = ii(c,d,a,b,k[6],15,-1560198380);b = ii(b,c,d,a,k[13],21,1309151649);
+      a = ii(a,b,c,d,k[4],6,-145523070);d = ii(d,a,b,c,k[11],10,-1120210379);c = ii(c,d,a,b,k[2],15,718787259);b = ii(b,c,d,a,k[9],21,-343485551);
+      x[0] = add32(a, x[0]); x[1] = add32(b, x[1]); x[2] = add32(c, x[2]); x[3] = add32(d, x[3]);
+    }
+    function cmn(q,a,b,x,s,t) { a = add32(add32(a,q), add32(x,t)); return add32((a<<s)|(a>>>(32-s)), b); }
+    function ff(a,b,c,d,x,s,t) { return cmn((b&c)|((~b)&d),a,b,x,s,t); }
+    function gg(a,b,c,d,x,s,t) { return cmn((b&d)|(c&(~d)),a,b,x,s,t); }
+    function hh(a,b,c,d,x,s,t) { return cmn(b^c^d,a,b,x,s,t); }
+    function ii(a,b,c,d,x,s,t) { return cmn(c^(b|(~d)),a,b,x,s,t); }
+    function add32(a,b) { return (a+b) & 0xFFFFFFFF; }
+    function md5blk(s) {
+      var md5blks = [], i;
+      for (i=0; i<64; i+=4) {
+        md5blks[i>>2] = s.charCodeAt(i) + (s.charCodeAt(i+1)<<8) + (s.charCodeAt(i+2)<<16) + (s.charCodeAt(i+3)<<24);
+      }
+      return md5blks;
+    }
+    var n = string.length, state = [1732584193,-271733879,-1732584194,271733878], i;
+    var tail = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    for (i=64; i<=n; i+=64) { md5cycle(state, md5blk(string.substring(i-64,i))); }
+    string = string.substring(i-64);
+    var sl = string.length;
+    for (i=0; i<sl; i++) { tail[i>>2] |= string.charCodeAt(i) << ((i%4)<<3); }
+    tail[i>>2] |= 0x80 << ((i%4)<<3);
+    if (i>55) { md5cycle(state, tail); tail = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; }
+    tail[14] = n*8;
+    md5cycle(state, tail);
+    var hex = '0123456789abcdef', s = '';
+    for (i=0; i<4; i++) for (var j=0; j<4; j++) s += hex.charAt((state[i]>>(j*8+4))&0xF) + hex.charAt((state[i]>>(j*8))&0xF);
+    return s;
+  }
+
+  // ===== Baidu Translate API (Chinese definitions, works in China) =====
+  var BAIDU_APPID = '20261028002708344';
+  var BAIDU_KEY = 'kWchkKAPLsxVm3G8EH3m';
+
+  function tryBaiduAPI(word) {
+    return new Promise(function(resolve) {
+      var salt = Date.now().toString();
+      var sign = md5(BAIDU_APPID + word + salt + BAIDU_KEY);
+      var url = 'https://fanyi-api.baidu.com/api/trans/vip/translate?q=' + encodeURIComponent(word) +
+        '&from=en&to=zh&appid=' + BAIDU_APPID + '&salt=' + salt + '&sign=' + sign;
+
+      var ctrl = new AbortController();
+      var timer = setTimeout(function() { ctrl.abort(); }, 5000);
+      fetch(url, { signal: ctrl.signal })
+        .then(function(res) { clearTimeout(timer); return res.json(); })
+        .then(function(data) {
+          if (data && data.trans_result && data.trans_result.length > 0) {
+            var defs = data.trans_result.map(function(t) { return t.dst; });
+            var entry = {
+              word: word,
+              phonetic: '',
+              audioUrl: getYoudaoAudio(word),
+              meanings: [{ pos: '', defs: defs }],
+              addedAt: Date.now()
+            };
+            resolve(entry);
+          } else { resolve(null); }
+        })
+        .catch(function() { clearTimeout(timer); resolve(null); });
+    });
+  }
+
+  // ===== API 1: Free Dictionary API (needs VPN in China) =====
+  function tryFreeDictAPI(word) {
+    return new Promise(function(resolve) {
+      var ctrl = new AbortController();
+      var timer = setTimeout(function() { ctrl.abort(); }, 4000);
+      fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word), { signal: ctrl.signal })
+        .then(function(res) {
+          clearTimeout(timer);
+          if (!res.ok) { resolve(null); return; }
+          return res.json();
+        })
+        .then(function(data) {
+          if (!data || !data[0]) { resolve(null); return; }
+          var d = data[0];
+          var entry = { word: d.word, phonetic: '', audioUrl: '', meanings: [], addedAt: Date.now() };
+          if (d.phonetics) {
+            for (var i = 0; i < d.phonetics.length; i++) {
+              if (d.phonetics[i].text && !entry.phonetic) entry.phonetic = d.phonetics[i].text;
+              if (d.phonetics[i].audio && !entry.audioUrl) entry.audioUrl = d.phonetics[i].audio;
+            }
+          }
+          if (!entry.phonetic && d.phonetic) entry.phonetic = d.phonetic;
+          if (d.meanings) {
+            for (var j = 0; j < d.meanings.length; j++) {
+              var m = d.meanings[j];
+              var defs = (m.definitions || []).slice(0, 2).map(function(x) { return x.definition; });
+              if (defs.length) entry.meanings.push({ pos: m.partOfSpeech, defs: defs });
+            }
+          }
+          resolve(entry);
+        })
+        .catch(function() { clearTimeout(timer); resolve(null); });
+    });
+  }
+
+  // ===== API 2: Youdao Dict (works in China without VPN) =====
+  function tryYoudaoAPI(word) {
+    return new Promise(function(resolve) {
+      var ctrl = new AbortController();
+      var timer = setTimeout(function() { ctrl.abort(); }, 4000);
+      fetch('https://dict.youdao.com/jsonapi_s?doctype=json&jsonversion=4&le=en&q=' + encodeURIComponent(word), { signal: ctrl.signal })
+        .then(function(res) {
+          clearTimeout(timer);
+          if (!res.ok) { resolve(null); return; }
+          return res.json();
+        })
+        .then(function(data) {
+          if (!data) { resolve(null); return; }
+          var entry = { word: word, phonetic: '', audioUrl: '', meanings: [], addedAt: Date.now() };
+          // Extract phonetic
+          try {
+            if (data.ec && data.ec.word && data.ec.word[0]) {
+              var w = data.ec.word[0];
+              if (w.usphone) entry.phonetic = '/' + w.usphone + '/';
+              else if (w.ukphone) entry.phonetic = '/' + w.ukphone + '/';
+              // Youdao audio
+              entry.audioUrl = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
+              // Extract meanings
+              if (w.trs) {
+                for (var i = 0; i < w.trs.length && i < 3; i++) {
+                  var tr = w.trs[i];
+                  if (tr.tr && tr.tr[0] && tr.tr[0].l && tr.tr[0].l.i) {
+                    var text = tr.tr[0].l.i.join('');
+                    // Parse "pos. definition" format like "n. 你好"
+                    var match = text.match(/^([a-z]+\.)\s*(.+)/);
+                    if (match) {
+                      entry.meanings.push({ pos: match[1], defs: [match[2]] });
+                    } else {
+                      entry.meanings.push({ pos: '', defs: [text] });
+                    }
+                  }
+                }
+              }
+            }
+          } catch(e) {}
+          if (entry.meanings.length > 0) resolve(entry);
+          else resolve(null);
+        })
+        .catch(function() { clearTimeout(timer); resolve(null); });
+    });
+  }
+
+  // ===== API 3: Youdao audio only (works in China) =====
+  function getYoudaoAudio(word) {
+    return 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(word) + '&type=2';
+  }
+
+  // ===== API 3: Youdao JSONP (bypasses CORS) =====
+  function tryYoudaoJSONP(word) {
+    return new Promise(function(resolve) {
+      var cbName = '_yd_cb_' + Date.now();
+      var timer = setTimeout(function() {
+        delete window[cbName];
+        var s = document.getElementById(cbName);
+        if (s) s.remove();
+        resolve(null);
+      }, 5000);
+
+      window[cbName] = function(data) {
+        clearTimeout(timer);
+        delete window[cbName];
+        var s = document.getElementById(cbName);
+        if (s) s.remove();
+        try {
+          var entry = { word: word, phonetic: '', audioUrl: getYoudaoAudio(word), meanings: [], addedAt: Date.now() };
+          if (data && data.ec && data.ec.word && data.ec.word[0]) {
+            var w = data.ec.word[0];
+            if (w.usphone) entry.phonetic = '/' + w.usphone + '/';
+            else if (w.ukphone) entry.phonetic = '/' + w.ukphone + '/';
+            if (w.trs) {
+              for (var i = 0; i < w.trs.length && i < 3; i++) {
+                var tr = w.trs[i];
+                if (tr.tr && tr.tr[0] && tr.tr[0].l && tr.tr[0].l.i) {
+                  var text = tr.tr[0].l.i.join('');
+                  var match = text.match(/^([a-z]+\.)\s*(.+)/);
+                  if (match) entry.meanings.push({ pos: match[1], defs: [match[2]] });
+                  else entry.meanings.push({ pos: '', defs: [text] });
+                }
+              }
+            }
+          }
+          resolve(entry.meanings.length > 0 ? entry : null);
+        } catch(e) { resolve(null); }
+      };
+
+      var script = document.createElement('script');
+      script.id = cbName;
+      script.src = 'https://dict.youdao.com/jsonapi_s?doctype=jsonp&jsonversion=4&le=en&callback=' + cbName + '&q=' + encodeURIComponent(word);
+      script.onerror = function() { clearTimeout(timer); delete window[cbName]; script.remove(); resolve(null); };
+      document.head.appendChild(script);
+    });
+  }
+
+  // ===== Main lookup: try all APIs =====
+  async function lookupAndAdd(word) {
+    word = word.trim();
+    if (!word) return;
+
+    if (words.find(function(w) { return w.word.toLowerCase() === word.toLowerCase(); })) {
+      showStatus('这个词已经在词典里了', 'error');
+      setTimeout(clearStatus, 2000);
+      return;
+    }
+
+    showStatus('查询中...', 'loading');
+    document.getElementById('addBtn').disabled = true;
+
+    var errors = [];
+
+    var w = word.toLowerCase();
+    var result = null;
+
+    // 1. Baidu Translate (Chinese, works in China)
+    try { result = await tryBaiduAPI(w); } catch(e) { errors.push('Baidu: ' + e.message); }
+
+    // 2. Youdao (Chinese, works in China)
+    if (!result) {
+      try { result = await tryYoudaoAPI(w); } catch(e) { errors.push('Youdao: ' + e.message); }
+    }
+    if (!result) {
+      try { result = await tryYoudaoJSONP(w); } catch(e) { errors.push('YoudaoJSONP: ' + e.message); }
+    }
+
+    // 3. Free Dictionary API (English, needs VPN)
+    if (!result) {
+      try { result = await tryFreeDictAPI(w); } catch(e) { errors.push('FreeDict: ' + e.message); }
+      if (result && !result.audioUrl) result.audioUrl = getYoudaoAudio(w);
+    }
+
+    if (result) {
+      words.unshift(result);
+      save();
+      document.getElementById('wordInput').value = '';
+      clearStatus();
+      render();
+      document.getElementById('wordInput').focus();
+      return;
+    }
+
+    // All failed
+    if (result) {
+      words.unshift(youdao);
+      save();
+      document.getElementById('wordInput').value = '';
+      clearStatus();
+      render();
+      document.getElementById('wordInput').focus();
+      return;
+    }
+
+    // Both failed — show error detail and manual entry
+    if (errors.length) showStatus('查询失败: ' + errors.join('; '), 'error');
+    else clearStatus();
+    var entry = {
+      word: word,
+      phonetic: '',
+      audioUrl: getYoudaoAudio(word.toLowerCase()),
+      meanings: [],
+      addedAt: Date.now(),
+      needsEdit: true
+    };
+    words.unshift(entry);
+    save();
+    document.getElementById('wordInput').value = '';
+    render();
+    document.getElementById('addBtn').disabled = false;
+  }
+
+  function deleteWord(i) { words.splice(i, 1); save(); render(); }
+
+  function playAudio(url) {
+    if (!url) return;
+    new Audio(url).play().catch(function() {});
+  }
+
+  function saveDef(i, def, phonetic) {
+    if (!def || !def.trim()) return;
+    words[i].meanings = [{ pos: '', defs: [def.trim()] }];
+    if (phonetic && phonetic.trim()) words[i].phonetic = phonetic.trim();
+    delete words[i].needsEdit;
+    save();
+    render();
+  }
+
+  function formatDate(ts) {
+    var d = new Date(ts);
+    return (d.getMonth()+1) + '/' + d.getDate();
+  }
+
+  function getFiltered() {
+    var list = words;
+    if (currentTab === 'recent') {
+      var cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      list = list.filter(function(w) { return w.addedAt > cutoff; });
+    } else if (currentTab === 'search' && searchFilter) {
+      var q = searchFilter.toLowerCase();
+      list = list.filter(function(w) {
+        return w.word.toLowerCase().indexOf(q) !== -1 ||
+          w.meanings.some(function(m) { return m.defs.some(function(d) { return d.toLowerCase().indexOf(q) !== -1; }); });
+      });
+    }
+    return list;
+  }
+
+  function render() {
+    document.getElementById('addBtn').disabled = false;
+    var filtered = getFiltered();
+    document.getElementById('count').textContent = filtered.length !== words.length
+      ? '共 ' + words.length + ' 个单词，显示 ' + filtered.length + ' 个'
+      : '共 ' + words.length + ' 个单词';
+
+    var listEl = document.getElementById('list');
+    if (filtered.length === 0) {
+      listEl.innerHTML = words.length === 0
+        ? '<div class="empty">还没有单词<br>输入单词自动查询音标和释义</div>'
+        : '<div class="empty">没有匹配的单词</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(function(w) {
+      var ri = words.indexOf(w);
+      var audioBtn = w.audioUrl
+        ? '<button class="sound-btn" onclick="window._play(\'' + esc(w.audioUrl) + '\')">🔊</button>' : '';
+      var phoneticText = w.phonetic ? '<span class="word-phonetic">' + esc(w.phonetic) + '</span>' : '';
+
+      var meaningsHTML = '';
+      if (w.meanings && w.meanings.length > 0) {
+        meaningsHTML = w.meanings.map(function(m) {
+          var posTag = m.pos ? '<span class="word-pos">' + esc(m.pos) + '</span>' : '';
+          return posTag + m.defs.map(function(d) {
+            return '<div class="word-def">' + esc(d) + '</div>';
+          }).join('');
+        }).join('');
+      }
+
+      var manualHTML = '';
+      if (w.needsEdit) {
+        manualHTML = '<div class="manual-area">' +
+          '<div style="font-size:0.82rem;color:var(--fg2)">自动查询失败，手动输入：</div>' +
+          '<div class="row"><input id="mph-' + ri + '" type="text" placeholder="音标（选填）" style="max-width:45%">' +
+          '<input id="mdef-' + ri + '" type="text" placeholder="释义" onkeydown="if(event.key===\'Enter\')window._saveDef(' + ri + ')"></div>' +
+          '<div class="row" style="justify-content:flex-end"><button onclick="window._saveDef(' + ri + ')">保存</button></div></div>';
+      }
+
+      return '<div class="word-card">' +
+        '<div class="word-actions"><button onclick="window._del(' + ri + ')">✕</button></div>' +
+        '<div class="word-header">' +
+          '<span class="word-name">' + esc(w.word) + '</span>' + audioBtn + phoneticText +
+        '</div>' + meaningsHTML + manualHTML +
+        '<div class="date-label">' + formatDate(w.addedAt) + '</div></div>';
+    }).join('');
+  }
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      currentTab = tab.dataset.tab;
+      document.getElementById('searchBox').style.display = currentTab === 'search' ? 'block' : 'none';
+      if (currentTab === 'search') document.getElementById('searchInput').focus();
+      render();
+    });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', function() {
+    searchFilter = this.value.trim(); render();
+  });
+
+  document.getElementById('addBtn').addEventListener('click', function() {
+    lookupAndAdd(document.getElementById('wordInput').value);
+  });
+  document.getElementById('wordInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') lookupAndAdd(this.value);
+  });
+
+  window._del = deleteWord;
+  window._play = playAudio;
+  window._saveDef = function(i) {
+    var defEl = document.getElementById('mdef-' + i);
+    var phEl = document.getElementById('mph-' + i);
+    if (defEl) saveDef(i, defEl.value, phEl ? phEl.value : '');
+  };
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
